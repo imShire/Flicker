@@ -14,7 +14,6 @@ echo "==> Release 构建"
 # 手动清理 build 目录（xcodebuild clean 无法删除自定义 CONFIGURATION_BUILD_DIR）
 rm -rf "$BUILD_DIR"
 xcodebuild -project "$PROJECT" -target "$TARGET" -configuration "$CONFIG" \
-  -derivedDataPath "$BUILD_DIR/DerivedData" \
   CONFIGURATION_BUILD_DIR="$BUILD_DIR" build
 
 if [[ ! -d "$APP_PATH" ]]; then
