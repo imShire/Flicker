@@ -79,29 +79,35 @@ struct NewFileSettings: Codable {
     var enabledTypes: [String]
     /// 创建后自动打开
     var autoOpen: Bool
-    
-    /// 默认设置：启用txt和md，自动打开
+    /// 在 Finder 工具栏显示 Flicker 新建文件按钮
+    var showFinderToolbarButton: Bool
+
+    /// 默认设置：启用txt和md，自动打开，显示工具栏按钮
     static let defaults = NewFileSettings(
         enabledTypes: ["txt", "md"],
-        autoOpen: true
+        autoOpen: true,
+        showFinderToolbarButton: true
     )
-    
+
     // 兼容旧配置：缺少字段时用默认值。
     init(
         enabledTypes: [String] = ["txt", "md"],
-        autoOpen: Bool = true
+        autoOpen: Bool = true,
+        showFinderToolbarButton: Bool = true
     ) {
         self.enabledTypes = enabledTypes
         self.autoOpen = autoOpen
+        self.showFinderToolbarButton = showFinderToolbarButton
     }
-    
+
     private enum CodingKeys: String, CodingKey {
-        case enabledTypes, autoOpen
+        case enabledTypes, autoOpen, showFinderToolbarButton
     }
-    
+
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         enabledTypes = try c.decodeIfPresent([String].self, forKey: .enabledTypes) ?? ["txt", "md"]
         autoOpen = try c.decodeIfPresent(Bool.self, forKey: .autoOpen) ?? true
+        showFinderToolbarButton = try c.decodeIfPresent(Bool.self, forKey: .showFinderToolbarButton) ?? true
     }
 }

@@ -32,7 +32,8 @@ final class AppSettings: ObservableObject {
     private func persistNewFileSettings() {
         SharedStore.saveNewFileSettings(NewFileSettings(
             enabledTypes: newFileEnabledTypes,
-            autoOpen: newFileAutoOpen
+            autoOpen: newFileAutoOpen,
+            showFinderToolbarButton: showFinderToolbarButton
         ))
     }
 
@@ -91,6 +92,10 @@ final class AppSettings: ObservableObject {
     @Published var newFileAutoOpen: Bool = true {
         didSet { persistNewFileSettings() }
     }
+    /// 在 Finder 工具栏显示 Flicker 新建文件按钮。
+    @Published var showFinderToolbarButton: Bool = true {
+        didSet { persistNewFileSettings() }
+    }
 
     init() {
         showMenuBarIcon = (defaults.object(forKey: Key.menuBar) as? Bool) ?? true
@@ -106,6 +111,7 @@ final class AppSettings: ObservableObject {
         let newFileSettings = SharedStore.loadNewFileSettings()
         newFileEnabledTypes = newFileSettings.enabledTypes
         newFileAutoOpen = newFileSettings.autoOpen
+        showFinderToolbarButton = newFileSettings.showFinderToolbarButton
     }
 
     /// 应用全部设置（正常启动或用户重新打开应用时调用）。

@@ -6,14 +6,14 @@ set -euo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 PROJECT="$PROJECT_DIR/Flicker.xcodeproj"
-SCHEME="Flicker"
+TARGET="Flicker"
 CONFIG="Release"
 BUILD_DIR="$PROJECT_DIR/build"
 APP_PATH="$BUILD_DIR/Flicker.app"
 echo "==> Release 构建"
 # 手动清理 build 目录（xcodebuild clean 无法删除自定义 CONFIGURATION_BUILD_DIR）
 rm -rf "$BUILD_DIR"
-xcodebuild -project "$PROJECT" -scheme "$SCHEME" -configuration "$CONFIG" \
+xcodebuild -project "$PROJECT" -target "$TARGET" -configuration "$CONFIG" \
   -derivedDataPath "$BUILD_DIR/DerivedData" \
   CONFIGURATION_BUILD_DIR="$BUILD_DIR" build
 

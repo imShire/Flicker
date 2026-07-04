@@ -21,6 +21,8 @@ struct ActionControlPanel: View {
                     .help("在右键菜单中显示「复制文件名」")
             }
             Section("新建文件") {
+                Toggle("在 Finder 工具栏显示新建文件按钮", isOn: $settings.showFinderToolbarButton)
+                    .help("在 Finder 顶部工具栏显示 Flicker 按钮，点击即可新建文件")
                 ForEach(NewFileType.defaults) { fileType in
                     Toggle(fileType.name + " (." + fileType.ext + ")", isOn: Binding(
                         get: { settings.newFileEnabledTypes.contains(fileType.id) },

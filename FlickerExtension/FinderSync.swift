@@ -17,11 +17,43 @@ final class FinderSync: FIFinderSync {
         FIFinderSyncController.default().directoryURLs = [URL(fileURLWithPath: "/")]
     }
 
+    // MARK: - Toolbar Item
+
+    /// 工具栏按钮是否显示：取决于设置开关，且至少启用了一种新建文件类型。
+    private var toolbarEnabled: Bool {
+        let settings = SharedStore.loadNewFileSettings()
+        return settings.showFinderToolbarButton && !settings.enabledTypes.isEmpty
+    }
+
+    override var toolbarItemName: String {
+        return toolbarEnabled ? "新建文件" : ""
+    }
+
+    override var toolbarItemToolTip: String {
+        return toolbarEnabled ? "通过 Flicker 在当前目录新建文件" : ""
+    }
+
+    override var toolbarItemImage: NSImage {
+        let symbol = NSImage(systemSymbolName: "doc.badge.plus", accessibilityDescription: "新建文件")
+        let fallback = NSImage(systemSymbolName: "doc.text", accessibilityDescription: "新建文件")
+        let image = symbol ?? fallback ?? NSImage(size: NSSize(width: 16, height: 16))
+        image.isTemplate = true
+        return image
+    }
+
     // MARK: - Menu
 
     override func menu(for menuKind: FIMenuKind) -> NSMenu {
         let menu = NSMenu(title: "Flicker")
-        
+
+        // 处理工具栏按钮点击
+        if menuKind == .toolbarItemMenu {
+            if let targetURL = FIFinderSyncController.default().targetedURL() {
+                addNewFileMenu(to: menu, directory: targetURL.path)
+            }
+            return menu
+        }
+
         // 处理空白区域右键（容器菜单）
         if menuKind == .contextualMenuForContainer {
             // 获取当前目录
