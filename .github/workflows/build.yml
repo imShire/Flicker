@@ -39,9 +39,7 @@ jobs:
             -project "${{ env.PROJECT }}" \
             -target "${{ env.TARGET }}" \
             -configuration "${{ env.CONFIG }}" \
-            CODE_SIGN_STYLE=Manual \
-            CODE_SIGN_IDENTITY="-" \
-            DEVELOPMENT_TEAM="" \
+            -destination "platform=macOS" \
             CONFIGURATION_BUILD_DIR="$(pwd)/build" \
             build
 
