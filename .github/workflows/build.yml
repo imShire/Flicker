@@ -1,4 +1,4 @@
-name: Build Flicker DMG
+name: Build and Release Flicker DMG
 
 on:
   push:
@@ -7,11 +7,16 @@ on:
     branches: [main]
   workflow_dispatch:
 
+env:
+  PROJECT: Flicker.xcodeproj
+  TARGET: Flicker
+  CONFIG: Release
+
 jobs:
   build:
     runs-on: macos-15
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Select Xcode 16.4
@@ -19,39 +24,61 @@ jobs:
         with:
           xcode-version: '16.4'
 
-      - name: Build and package DMG
-        run: ./scripts/build_dmg.sh 2>&1 | tee build.log
-        continue-on-error: true
+      - name: Show Xcode and SDK versions
+        run: |
+          xcodebuild -version
+          xcodebuild -showsdks
 
-      - name: Upload build log
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: build-log
-          path: build.log
+      - name: Clean build directory
+        run: rm -rf build dist
+
+      - name: Build Flicker app
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project "${{ env.PROJECT }}" \
+            -target "${{ env.TARGET }}" \
+            -configuration "${{ env.CONFIG }}" \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="-" \
+            DEVELOPMENT_TEAM="" \
+            CONFIGURATION_BUILD_DIR="$(pwd)/build" \
+            build
+
+      - name: Verify build products
+        run: |
+          ls -la build/
+          test -d "build/Flicker.app" || (echo "Flicker.app not found" && exit 1)
+          test -d "build/Flicker.app/Contents/PlugIns/FlickerExtension.appex" || \
+            (echo "FlickerExtension.appex not found" && exit 1)
+
+      - name: Extract app version
+        id: version
+        run: |
+          VERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" \
+            "build/Flicker.app/Contents/Info.plist")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "App version: $VERSION"
+
+      - name: Create DMG staging
+        run: |
+          STAGING="build/dmg-staging"
+          rm -rf "$STAGING"
+          mkdir -p "$STAGING"
+          cp -R "build/Flicker.app" "$STAGING/"
+          ln -s /Applications "$STAGING/Applications"
+
+      - name: Create DMG
+        run: |
+          mkdir -p dist
+          DMG_PATH="dist/Flicker-${{ steps.version.outputs.version }}.dmg"
+          hdiutil create -volname "Flicker" -srcfolder "build/dmg-staging" \
+            -fs "HFS+" -format "UDZO" -imagekey "zlib-level=9" "$DMG_PATH"
+          ls -lh "$DMG_PATH"
 
       - name: Upload DMG artifact
         uses: actions/upload-artifact@v4
-        if: hashFiles('dist/*.dmg') != ''
         with:
-          name: Flicker-DMG
+          name: Flicker-${{ steps.version.outputs.version }}
           path: dist/*.dmg
-          if-no-files-found: ignore
-
-      - name: Fail if DMG missing
-        run: |
-          if [ ! -f dist/*.dmg ]; then
-            echo "::error::DMG was not produced. See job summary for build log details."
-            echo "## Build failed" >> "$GITHUB_STEP_SUMMARY"
-            echo "" >> "$GITHUB_STEP_SUMMARY"
-            echo "### Error lines" >> "$GITHUB_STEP_SUMMARY"
-            echo "\`\`\`" >> "$GITHUB_STEP_SUMMARY"
-            grep -n -E "error:|FAILED|Build failed|undefined" build.log | tail -n 50 >> "$GITHUB_STEP_SUMMARY" || true
-            echo "\`\`\`" >> "$GITHUB_STEP_SUMMARY"
-            echo "" >> "$GITHUB_STEP_SUMMARY"
-            echo "### Build log tail" >> "$GITHUB_STEP_SUMMARY"
-            echo "\`\`\`" >> "$GITHUB_STEP_SUMMARY"
-            tail -n 80 build.log >> "$GITHUB_STEP_SUMMARY"
-            echo "\`\`\`" >> "$GITHUB_STEP_SUMMARY"
-            exit 1
-          fi
+          if-no-files-found: error
