@@ -41,6 +41,9 @@ jobs:
       - name: Fail if DMG missing
         run: |
           if [ ! -f dist/*.dmg ]; then
-            echo "::error::DMG was not produced. See build-log artifact for details."
+            echo "::error::DMG was not produced. Build log tail below:"
+            tail -n 40 build.log | while IFS= read -r line; do
+              echo "::error::$line"
+            done
             exit 1
           fi
