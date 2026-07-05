@@ -13,6 +13,8 @@ final class FinderSync: FIFinderSync {
 
     override init() {
         super.init()
+        // 扩展进程启动时同样迁移旧配置，确保 App Group 容器内存在配置。
+        SharedStore.migrateLegacyConfigIfNeeded()
         // 监视根目录，使右键菜单可出现在任意位置。
         FIFinderSyncController.default().directoryURLs = [URL(fileURLWithPath: "/")]
     }

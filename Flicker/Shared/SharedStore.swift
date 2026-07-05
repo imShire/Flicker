@@ -40,6 +40,7 @@ enum SharedStore {
             }
             return dir
         }
+        logger.error("app group container unavailable: \(appGroupIdentifier, privacy: .public)")
 
         // Fallback：旧路径（兼容未启用 App Group 的场景）。
         guard let home = realHomeDirectory else { return nil }
@@ -115,8 +116,14 @@ enum SharedStore {
 
     /// 读取应用列表。
     static func loadEntries() -> [AppEntry] {
-        guard let url = configFileURL,
-              let data = try? Data(contentsOf: url) else { return [] }
+        guard let url = configFileURL else {
+            logger.error("loadEntries failed: configFileURL is nil")
+            return []
+        }
+        guard let data = try? Data(contentsOf: url) else {
+            logger.error("loadEntries failed: cannot read data from \(url.path, privacy: .public)")
+            return []
+        }
         do {
             return try JSONDecoder().decode([AppEntry].self, from: data)
         } catch {
@@ -143,8 +150,14 @@ enum SharedStore {
 
     /// 读取菜单设置。文件不存在时返回默认值。
     static func loadMenuSettings() -> MenuSettings {
-        guard let url = menuSettingsFileURL,
-              let data = try? Data(contentsOf: url) else { return .defaults }
+        guard let url = menuSettingsFileURL else {
+            logger.error("loadMenuSettings failed: menuSettingsFileURL is nil")
+            return .defaults
+        }
+        guard let data = try? Data(contentsOf: url) else {
+            logger.error("loadMenuSettings failed: cannot read data from \(url.path, privacy: .public)")
+            return .defaults
+        }
         do {
             return try JSONDecoder().decode(MenuSettings.self, from: data)
         } catch {
@@ -171,8 +184,14 @@ enum SharedStore {
     
     /// 读取新建文件设置。文件不存在时返回默认值。
     static func loadNewFileSettings() -> NewFileSettings {
-        guard let url = newFileSettingsFileURL,
-              let data = try? Data(contentsOf: url) else { return .defaults }
+        guard let url = newFileSettingsFileURL else {
+            logger.error("loadNewFileSettings failed: newFileSettingsFileURL is nil")
+            return .defaults
+        }
+        guard let data = try? Data(contentsOf: url) else {
+            logger.error("loadNewFileSettings failed: cannot read data from \(url.path, privacy: .public)")
+            return .defaults
+        }
         do {
             return try JSONDecoder().decode(NewFileSettings.self, from: data)
         } catch {
