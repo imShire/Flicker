@@ -8,9 +8,5 @@
 	<array>
 		<string>group.com.wangyanan.flicker</string>
 	</array>
-	<key>com.apple.security.temporary-exception.files.absolute-path.read-only</key>
-	<array>
-		<string>/Users/wangyanan/Library/Application Support/Flicker/</string>
-	</array>
 </dict>
 </plist>

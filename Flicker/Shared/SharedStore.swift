@@ -9,17 +9,17 @@
 import Foundation
 import os
 
-/// 配置读写。App 与扩展共享一个固定路径文件。
-/// 路径：~/Library/Application Support/Flicker/app_entries.json
+/// 配置读写。App 与 Finder Sync 扩展共享配置。
 ///
-/// 关键点：沙盒扩展里 `urls(for: .applicationSupportDirectory)` 与
-/// `homeDirectoryForCurrentUser` 都返回沙盒容器路径而非真实主目录。
-/// 因此用 `getpwuid(getuid())` 取真实主目录，保证 App 与扩展读写同一文件。
+/// 使用 App Group 容器（~/Library/Group Containers/group.com.wangyanan.flicker/Flicker/）
+/// 作为共享目录，避免扩展沙盒无法访问绝对路径的问题。首次启动时会从旧路径
+///（~/Library/Application Support/Flicker/）迁移已有配置。
 enum SharedStore {
     static let configFileName = "app_entries.json"
     static let menuSettingsFileName = "menu_settings.json"
     static let newFileSettingsFileName = "new_file_settings.json"
     static let appSupportSubdir = "Flicker"
+    static let appGroupIdentifier = "group.com.wangyanan.flicker"
     private static let logger = Logger(subsystem: "com.wangyanan.flicker", category: "SharedStore")
 
     /// 真实用户主目录（不受沙盒容器重定向影响）。
@@ -28,10 +28,21 @@ enum SharedStore {
         return URL(fileURLWithFileSystemRepresentation: pw.pointee.pw_dir, isDirectory: true, relativeTo: nil)
     }
 
-    /// 共享目录 URL（真实路径，非沙盒容器路径）。
+    /// 共享目录 URL。优先使用 App Group 容器，便于沙盒扩展共享。
     static var sharedDirectoryURL: URL? {
-        guard let home = realHomeDirectory else { return nil }
         let fm = FileManager.default
+
+        // 优先使用 App Group 容器，主 App 与沙盒扩展均可访问。
+        if let containerURL = fm.containerURL(forSecurityApplicationGroupIdentifier: appGroupIdentifier) {
+            let dir = containerURL.appendingPathComponent(appSupportSubdir, isDirectory: true)
+            if !fm.fileExists(atPath: dir.path) {
+                try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
+            }
+            return dir
+        }
+
+        // Fallback：旧路径（兼容未启用 App Group 的场景）。
+        guard let home = realHomeDirectory else { return nil }
         let dir = home
             .appendingPathComponent("Library", isDirectory: true)
             .appendingPathComponent("Application Support", isDirectory: true)
@@ -42,7 +53,52 @@ enum SharedStore {
         return dir
     }
 
-    /// 共享配置文件 URL（真实路径，非沙盒容器路径）。
+    /// 旧版配置目录 URL（~/Library/Application Support/Flicker/）。
+    private static var legacyDirectoryURL: URL? {
+        guard let home = realHomeDirectory else { return nil }
+        let dir = home
+            .appendingPathComponent("Library", isDirectory: true)
+            .appendingPathComponent("Application Support", isDirectory: true)
+            .appendingPathComponent(appSupportSubdir, isDirectory: true)
+        if !FileManager.default.fileExists(atPath: dir.path) {
+            try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        }
+        return dir
+    }
+
+    /// 将旧路径下的配置迁移到 App Group 容器。
+    /// 仅在 App Group 目录中不存在对应文件且旧目录存在文件时执行。
+    static func migrateLegacyConfigIfNeeded() {
+        let fm = FileManager.default
+
+        guard let legacyDir = legacyDirectoryURL,
+              let sharedDir = sharedDirectoryURL else { return }
+
+        let fileNames = [configFileName, menuSettingsFileName, newFileSettingsFileName]
+        var migratedAny = false
+
+        for fileName in fileNames {
+            let legacyURL = legacyDir.appendingPathComponent(fileName, isDirectory: false)
+            let sharedURL = sharedDir.appendingPathComponent(fileName, isDirectory: false)
+
+            guard fm.fileExists(atPath: legacyURL.path),
+                  !fm.fileExists(atPath: sharedURL.path) else { continue }
+
+            do {
+                try fm.copyItem(at: legacyURL, to: sharedURL)
+                migratedAny = true
+                logger.info("migrated \(fileName, privacy: .public) to app group container")
+            } catch {
+                logger.error("migrate \(fileName, privacy: .public) failed: \(error.localizedDescription, privacy: .public)")
+            }
+        }
+
+        if migratedAny {
+            logger.info("legacy config migration finished")
+        }
+    }
+
+    /// 共享配置文件 URL。
     static var configFileURL: URL? {
         sharedDirectoryURL?.appendingPathComponent(configFileName, isDirectory: false)
     }

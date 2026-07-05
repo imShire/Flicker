@@ -93,6 +93,9 @@ final class AppSettings: ObservableObject {
     }
 
     init() {
+        // 首次启动时把旧路径配置迁移到 App Group 容器，避免配置丢失。
+        SharedStore.migrateLegacyConfigIfNeeded()
+
         showMenuBarIcon = (defaults.object(forKey: Key.menuBar) as? Bool) ?? true
         showInDock = (defaults.object(forKey: Key.dock) as? Bool) ?? true
         launchAtLogin = (defaults.object(forKey: Key.login) as? Bool) ?? false
@@ -102,7 +105,7 @@ final class AppSettings: ObservableObject {
         showCopyAbsolutePath = menuSettings.showCopyAbsolutePath
         showCopyRelativePath = menuSettings.showCopyRelativePath
         showCopyFileName = menuSettings.showCopyFileName
-        
+
         let newFileSettings = SharedStore.loadNewFileSettings()
         newFileEnabledTypes = newFileSettings.enabledTypes
         newFileAutoOpen = newFileSettings.autoOpen
